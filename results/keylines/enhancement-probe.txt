@@ -1,0 +1,4 @@
+2x upscale=fsr1 Video Enhancement: (x1.00) Shader FSR1
+12x upscale=fsr1 Video Enhancement: (x2.00) Shader FSR1
+4x upscale=mwsr Video Enhancement: (x1.00) Shader MWSR
+14x upscale=mwsr Video Enhancement: (x2.00) Shader MWSR

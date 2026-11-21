@@ -1,0 +1,58 @@
+BENCH-ONLY GPU timing instrumentation (pass timers summed per frame). Not part of the fix; not intended for upstream.
+diff --git a/app/streaming/video/ffmpeg-renderers/plvk.cpp b/app/streaming/video/ffmpeg-renderers/plvk.cpp
+index 048c8375..9d5b750c 100644
+--- a/app/streaming/video/ffmpeg-renderers/plvk.cpp
++++ b/app/streaming/video/ffmpeg-renderers/plvk.cpp
+@@ -17,6 +17,43 @@ extern "C" {
+ 
+ #include <vector>
+ #include <set>
++
++// BENCH-ONLY GPU timing (not part of any fix): libplacebo pass timers (Vulkan timestamp queries) per frame.
++#include <algorithm>
++#include <cmath>
++static double g_mlAcc = 0;            // ns of GPU pass time collected for the current frame
++static std::vector<double> g_mlS;     // per-frame sums, ns
++static void mlFlush()
++{
++    if (g_mlAcc > 0) {
++        g_mlS.push_back(g_mlAcc);
++        size_t n = g_mlS.size();
++        if (n % 300 == 0 && n > 120) {
++            std::vector<double> v(g_mlS.begin() + 120, g_mlS.end());
++            double m = 0, q = 0;
++            for (double x : v) m += x;
++            m /= v.size();
++            for (double x : v) q += (x - m) * (x - m);
++            std::sort(v.begin(), v.end());
++            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "MLGPUT n=%zu mean_us=%.1f sd_us=%.1f p50_us=%.1f p95_us=%.1f",
++                        v.size(), m / 1000, sqrt(q / v.size()) / 1000, v[v.size() / 2] / 1000, v[v.size() * 95 / 100] / 1000);
++        }
++    }
++    g_mlAcc = 0;
++}
++static void mlInfoCb(void*, const pl_render_info* info)
++{
++    if (info && info->pass) g_mlAcc += (double)info->pass->last;
++}
++static const pl_render_params* mlTimed(const pl_render_params* in)
++{
++    static pl_render_params p;
++    mlFlush();
++    p = *in;
++    p.info_callback = mlInfoCb;
++    p.info_priv = nullptr;
++    return &p;
++}
+ #include <cmath>
+ 
+ #ifndef VK_KHR_video_decode_av1
+@@ -1421,7 +1458,7 @@ void PlVkRenderer::renderFrame(AVFrame *frame)
+                          "pl_render_image() failed for the overlays");
+         }
+     }
+-    else if (!pl_render_image(m_Renderer, &mappedFrame, &targetFrame, &renderParams)) {
++    else if (!pl_render_image(m_Renderer, &mappedFrame, &targetFrame, mlTimed(&renderParams))) {
+         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                      "pl_render_image() failed");
+         // NB: We must fallthrough to call pl_swapchain_submit_frame()

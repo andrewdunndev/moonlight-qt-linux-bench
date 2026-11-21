@@ -1,0 +1,18 @@
+BENCH-ONLY GPU timing instrumentation (pass timers summed per frame). Not part of the fix; not intended for upstream.
+diff --git a/app/streaming/video/ffmpeg-renderers/plvk.cpp b/app/streaming/video/ffmpeg-renderers/plvk.cpp
+index 3e2c2941..e334349c 100644
+--- a/app/streaming/video/ffmpeg-renderers/plvk.cpp
++++ b/app/streaming/video/ffmpeg-renderers/plvk.cpp
+@@ -980,7 +980,12 @@ bool PlVkRenderer::renderMwsrPlanes(const AVFrame* frame, const pl_frame* image,
+     dispatch.shader = &sh;
+     dispatch.target = fbo;
+     dispatch.rect = rect;
++    static pl_timer mlTimer = nullptr;   // BENCH-ONLY GPU timing of the one-pass dispatch
++    if (!mlTimer) mlTimer = pl_timer_create(m_Vulkan->gpu);
++    mlFlush();
++    dispatch.timer = mlTimer;
+     bool dispatched = pl_dispatch_finish(m_MwsrDispatch, &dispatch);
++    for (uint64_t t; (t = pl_timer_query(m_Vulkan->gpu, mlTimer)) != 0;) g_mlAcc += (double)t;
+     if (image->release) {
+         image->release(m_Vulkan->gpu, const_cast<pl_frame*>(image));
+     }

@@ -1,0 +1,5 @@
+raw/
+evidence/
+frames/
+*.ppm
+.local/
