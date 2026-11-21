@@ -10,9 +10,10 @@
 #                                the other machine is the Wolf server. BUILD as above, UPSCALE off|fsr1|mwsr,
 #                                MODE below (1080p->4K, ratio 2.00) | equal (4K, ratio 1.00), HDR sdr|hdr
 #   matrix CLIENT                the round-1 matrix for one role assignment
+#   sdlfix N                     build the bench-only SDL refresh-fix image on machine N (see METHOD.md)
 #   clean N                      remove everything the bench put on machine N
 # Required env: HOST1 HOST2 (ssh targets), ADDR1 ADDR2 (stream addresses of the Wolf servers).
-# Optional env: SECS (60); APP (Wolf UI); DECODE_OPTIN (NAME=value passed to the client container: the vendor's
+# Optional env: RAW EV (output dirs, default raw/ evidence/ at the repo root); IMG (container image for cells); SECS (60); APP (Wolf UI); DECODE_OPTIN (NAME=value passed to the client container: the vendor's
 #   Vulkan video decode opt-in, if the stack needs one); GPU_ARGS1 GPU_ARGS2 (extra podman args per machine, e.g.
 #   device passthrough); KMS_JSON (client-side KMS config path); MOONLIGHT_CONFIG (client-side paired config
 #   dir, copied per cell); WOLF_SOCK (server-side Wolf API socket, empty = skip session cleanup);
@@ -29,7 +30,7 @@ DECODE_OPTIN=${DECODE_OPTIN:-}; KMS_JSON=${KMS_JSON:-/etc/kms.json}; MOONLIGHT_C
 WOLF_SOCK=${WOLF_SOCK-/run/wolf/wolf.sock}
 BASE_SHA=${BASE_SHA:-4113dd26be0907f2edf1805c7b9fd23766e17161}
 HEAD_SHA=${HEAD_SHA:-761ba60098b18ad9058bbef019ad33f51843c5d3}
-IMG=localhost/ml1557-deps:ci
+IMG=${IMG:-localhost/ml1557-deps:ci}   # IMG=localhost/ml1557-deps:ci-sdlfix for cells that need the SDL refresh fix
 WORK=/var/tmp/ml1557-work
 host() { eval echo "\$HOST$1"; }
 addr() { eval echo "\$ADDR$1"; }
@@ -42,6 +43,12 @@ cmd_deps() { # build the dependency image (same recipe as upstream CI, see Conta
   local h; h=$(host "$1")
   scp -q "$HERE/Containerfile.deps" "$HERE/build.sh" "$h:/var/tmp/" || return 1
   rh "$h" "t0=\$(date +%s); sudo -n podman build --network host -t $IMG -f /var/tmp/Containerfile.deps /var/tmp >/var/tmp/ml1557-deps.log 2>&1; rc=\$?; echo deps_rc=\$rc deps_s=\$((\$(date +%s)-t0))"
+}
+
+cmd_sdlfix() { # layer patches/bench/sdl-kmsdrm-vulkan-refresh.patch onto the deps image (tag ci-sdlfix)
+  local h; h=$(host "$1")
+  scp -q "$HERE/Containerfile.sdlfix" "$ROOT/patches/bench/sdl-kmsdrm-vulkan-refresh.patch" "$h:/var/tmp/" || return 1
+  rh "$h" "sudo -n podman build --network host -t localhost/ml1557-deps:ci-sdlfix -f /var/tmp/Containerfile.sdlfix /var/tmp >/var/tmp/ml1557-sdlfix.log 2>&1; echo sdlfix_rc=\$?"
 }
 
 cmd_build() { # clients on one machine; one build.kv line each
@@ -156,8 +163,8 @@ cmd_matrix() { # one role assignment; reps: off paths 3x below (noise), the rest
 
 cmd_clean() { # remove everything the bench put on a machine
   local h; h=$(host "$1")
-  rh "$h" "sudo -n podman rm -f ml1557-stream >/dev/null 2>&1; sudo -n podman rmi -f $IMG >/dev/null 2>&1; sudo -n podman image prune -f >/dev/null 2>&1; sudo -n rm -rf $WORK /var/tmp/ml1557* /var/tmp/Containerfile.deps /var/tmp/build.sh /var/tmp/*.patch; echo cleaned $1"
+  rh "$h" "sudo -n podman rm -f ml1557-stream >/dev/null 2>&1; sudo -n podman rmi -f $IMG localhost/ml1557-deps:ci-sdlfix >/dev/null 2>&1; sudo -n podman image prune -f >/dev/null 2>&1; sudo -n rm -rf $WORK /var/tmp/ml1557* /var/tmp/Containerfile.deps /var/tmp/build.sh /var/tmp/*.patch /var/tmp/Containerfile.sdlfix; echo cleaned $1"
 }
 
 c=${1:-}; shift || true
-case $c in deps|build|cell|_cell|matrix|clean) "cmd_$c" "$@" ;; *) sed -n '2,22p' "$0"; exit 2 ;; esac
+case $c in deps|sdlfix|build|cell|_cell|matrix|clean) "cmd_$c" "$@" ;; *) sed -n '2,22p' "$0"; exit 2 ;; esac

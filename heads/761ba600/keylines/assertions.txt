@@ -8,3 +8,8 @@ m1_head_mwsr_below_sdr_r2 moonlight: ../src/vulkan/gpu_tex.c:30: vk_tex_barrier:
 m1_head_mwsr_below_sdr_r3 moonlight: ../src/vulkan/gpu_tex.c:30: vk_tex_barrier: Assertion `!tex_vk->held' failed.
 m1_head_mwsr_below_sdr_r4 moonlight: ../src/vulkan/gpu_tex.c:30: vk_tex_barrier: Assertion `!tex_vk->held' failed.
 m1_head_mwsr_below_sdr_r5 moonlight: ../src/vulkan/gpu_tex.c:30: vk_tex_barrier: Assertion `!tex_vk->held' failed.
+m2_head_mwsr_below_sdr_r1_60hz moonlight: ../src/vulkan/gpu_tex.c:30: vk_tex_barrier: Assertion `!tex_vk->held' failed.
+m2_head_mwsr_below_sdr_r2_60hz moonlight: ../src/vulkan/gpu_tex.c:30: vk_tex_barrier: Assertion `!tex_vk->held' failed.
+m2_head_mwsr_below_sdr_r3_60hz moonlight: ../src/vulkan/gpu_tex.c:30: vk_tex_barrier: Assertion `!tex_vk->held' failed.
+m2_head_mwsr_below_sdr_r4_60hz moonlight: ../src/vulkan/gpu_tex.c:30: vk_tex_barrier: Assertion `!tex_vk->held' failed.
+m2_head_mwsr_below_sdr_r5_60hz moonlight: ../src/vulkan/gpu_tex.c:30: vk_tex_barrier: Assertion `!tex_vk->held' failed.

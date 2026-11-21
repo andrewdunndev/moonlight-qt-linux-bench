@@ -1,0 +1,8 @@
+# Bench-only: the deps image with SDL3 patched so KMSDRM Vulkan picks the highest-refresh mode of the window
+# size (what SDL main does; release-3.4.20 takes the first listed mode of that size and ignores refresh).
+# Needed only for a KMSDRM client on a driver whose first listed mode is not the highest refresh.
+# Build: bench.sh sdlfix N, then run cells with IMG=localhost/ml1557-deps:ci-sdlfix. Moonlight builds are unchanged.
+FROM localhost/ml1557-deps:ci
+COPY sdl-kmsdrm-vulkan-refresh.patch /deps/
+RUN cd /deps/SDL && git apply /deps/sdl-kmsdrm-vulkan-refresh.patch \
+ && cmake --build build -j && cmake --install build

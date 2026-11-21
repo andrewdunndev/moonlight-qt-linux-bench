@@ -1,6 +1,6 @@
 #!/bin/bash
 # One CSV row per evidence/*.kv cell (reads only evidence and keylines; touches no host).
-# usage: summarize.sh [EVIDENCE_DIR] [RAW_DIR] > run-table.csv
+# usage: summarize.sh [EVIDENCE_DIR] [RAW_DIR] > runs.csv
 # Needs the stats row bench.sh gets from STATS_PARSER: a clean cell without one is dropped as voided.
 # Excludes skipped cells, frame-capture cells (rep c<N>: the screenshot layer perturbs timing), HDR cells (the server refused HDR, so they are vacuous) and voided cells
 # (no assertion, no stats, no crash exit code: the stream dropped before video).

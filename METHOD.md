@@ -16,14 +16,27 @@ Deviations, all forced by the test machines being console hosts with no composit
 - The Vulkan video-decode opt-in some driver stacks need is passed as an env var (`DECODE_OPTIN`).
 
 Builds per machine: `base` (merge-base 4113dd26), `head` (PR head 761ba600), `headfix` (head plus
-`patches/mwsr-acquire-release.patch`). The T variants add a bench-only timing patch (`patches/timing/`).
+`patches/mwsr-acquire-release.patch`). Builds are per head; a new head repeats the set with its own sha. The T variants add a bench-only timing patch (`patches/timing/`).
 All builds finish with 0 errors and the same warning count (13) base versus head.
+
+## SDL refresh-rate fix (bench-only, when needed)
+SDL 3.4.20's KMSDRM Vulkan surface code takes the first listed `VkDisplayModeKHR` whose size equals the window
+and ignores refresh rate (SDL main sorts by refresh first). On one machine's driver the first listed 4K mode is
+23.976 Hz, so a 4K KMSDRM client there presented at about 24 Hz while the display itself offered 60. Apply
+`patches/bench/sdl-kmsdrm-vulkan-refresh.patch` (the upstream-main sort, backported) through
+`bench/Containerfile.sdlfix` (`bench.sh sdlfix N`, then run cells with `IMG=localhost/ml1557-deps:ci-sdlfix`)
+when all of these hold: a KMSDRM client, SDL 3.4.20 or older without the sort, and a driver whose first listed
+mode of the output size is not the highest refresh. Check the presented rate first (`fps_render` in the stats
+row): about 24 where 60 is expected means this applies. Moonlight builds are unchanged; SDL is the only thing
+that differs. Shipped moonlight is not affected: its upstream Linux build has SDL KMSDRM off, we enabled it.
+Rounds before 2026-11-21 on machine 2 ran without it; `refresh_hz` in each head's `runs.csv` says which.
 
 ## Stream shape
 Two Linux desktops with GPUs from different vendors (machine 1, machine 2), each 4K display, KMSDRM console
-client, Vulkan renderer (libplacebo), Vulkan decode, HEVC SDR, 60 fps. Wolf runs on the other machine; roles
-swap so each machine is measured as the client. Stream is 1080p at 20 Mbit/s onto the 4K display (ratio 2.00,
-the case upscaling exists for), with a 4K, 50 Mbit/s stream (ratio 1.00) as a control at n=1. The app is the
+client, Vulkan renderer (libplacebo), Vulkan decode, HEVC SDR, 60 fps, presented at 60 Hz (except machine 2 in
+the first round, see the SDL refresh fix above). Wolf runs on the other machine; roles swap so each machine is
+measured as the client. Stream is 1080p at 20 Mbit/s onto the 4K display (ratio 2.00, the case upscaling exists
+for), with a 4K, 50 Mbit/s stream (ratio 1.00) as a control at n=1. The app is the
 Wolf UI, a static scene; 60 s per cell (30 to 40 s for frame capture).
 `MATCH_DISPLAY_MODE_TO_VIDEO=0` is set: on KMSDRM the client otherwise switches the display to the stream
 mode, which would remove the upscale this bench measures. The Qt platform is `offscreen` so SDL KMSDRM
